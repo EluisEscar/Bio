@@ -1,0 +1,69 @@
+LOCUS       DEMO001                 3000 bp    DNA     circular SYN 01-JAN-2000
+DEFINITION  Plásmido sintético de ejemplo.
+ACCESSION   DEMO001
+VERSION     DEMO001.1
+KEYWORDS    .
+SOURCE      synthetic DNA construct
+  ORGANISM  synthetic DNA construct
+            .
+FEATURES             Location/Qualifiers
+     gene            101..450
+                     /gene="repA"
+                     /note="origen de replicación"
+     CDS             complement(801..1500)
+                     /product="protein X"
+                     /note="enzima hipotética"
+     promoter        2001..2300
+                     /note="promotor fuerte"
+ORIGIN
+        1 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+       61 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+      121 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+      181 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+      241 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+      301 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+      361 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+      421 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+      481 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+      541 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+      601 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+      661 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+      721 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+      781 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+      841 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+      901 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+      961 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     1021 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     1081 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     1141 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     1201 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     1261 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     1321 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     1381 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     1441 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     1501 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     1561 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     1621 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     1681 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     1741 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     1801 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     1861 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     1921 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     1981 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     2041 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     2101 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     2161 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     2221 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     2281 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     2341 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     2401 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     2461 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     2521 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     2581 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     2641 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     2701 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     2761 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     2821 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     2881 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+     2941 atgatgatga tgatgatgat gatgatgatg atgatgatga tgatgatgat gatgatgatg
+//
