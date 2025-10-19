@@ -62,7 +62,7 @@ class MainWindow(QMainWindow):
 
         self.doc = GenomeDocument()
 
-        # Toolbar ----------------------------------------------------------------
+        # Toolbar
         toolbar = QToolBar("Principal", self)
         self.addToolBar(toolbar)
         act_open = QAction("Abrir…", self)
@@ -83,19 +83,10 @@ class MainWindow(QMainWindow):
         act_zoom_out.triggered.connect(lambda: self.canvas.zoom(1.25))
         act_zoom_reset.triggered.connect(self.on_reset_view)
 
-        for action in (
-            act_open,
-            act_save,
-            act_save_as,
-            act_add,
-            act_del,
-            act_zoom_in,
-            act_zoom_out,
-            act_zoom_reset,
-        ):
+        for action in (act_open,act_save,act_save_as,act_add,act_del,act_zoom_in,act_zoom_out,act_zoom_reset,):
             toolbar.addAction(action)
 
-        # Panel izquierdo: guía y resumen --------------------------------------
+        # Panel izquierdo: guía y resumen
         left_panel = QWidget(self)
         left_panel.setMinimumWidth(200)
         left_panel.setMaximumWidth(350)

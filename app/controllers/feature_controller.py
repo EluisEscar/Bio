@@ -245,7 +245,6 @@ class FeatureController:
             self.editor.clear()
 
     # --- Utility --------------------------------------------------------------
-
     def _parse_qualifiers(self, qtext):
         qualifiers = {}
         if not qtext:
