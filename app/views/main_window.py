@@ -148,6 +148,8 @@ class MainWindow(QMainWindow):
         self._loader = None
         self._loading_dialog = None
         self._sidebar_width = 300
+        self._detail_visible = True
+        self._detail_sizes = [500, 300]
 
         # Toolbar
         toolbar = QToolBar("Principal", self)
@@ -160,6 +162,9 @@ class MainWindow(QMainWindow):
         act_toggle_sidebar = QAction("Mostrar panel guía", self)
         act_toggle_sidebar.setCheckable(True)
         act_toggle_sidebar.setChecked(True)
+        act_toggle_details = QAction("Mostrar detalles", self)
+        act_toggle_details.setCheckable(True)
+        act_toggle_details.setChecked(True)
         act_add = QAction("Añadir característica", self)
         act_del = QAction("Eliminar característica", self)
         act_zoom_in = QAction("Zoom +", self)
@@ -172,6 +177,7 @@ class MainWindow(QMainWindow):
         act_save_as.triggered.connect(self.on_save_as)
         act_delete_file.triggered.connect(self.on_delete_file)
         act_toggle_sidebar.toggled.connect(self.on_toggle_sidebar)
+        act_toggle_details.toggled.connect(self.on_toggle_details)
         act_add.triggered.connect(self.on_add_feature)
         act_del.triggered.connect(self.on_del_feature)
         act_zoom_in.triggered.connect(lambda: self.canvas.zoom(0.8))
@@ -181,6 +187,7 @@ class MainWindow(QMainWindow):
         act_delete_file.setEnabled(False)
         self.act_delete_file = act_delete_file
         self.act_toggle_sidebar = act_toggle_sidebar
+        self.act_toggle_details = act_toggle_details
 
         for action in (
             act_open,
@@ -189,6 +196,7 @@ class MainWindow(QMainWindow):
             act_save_as,
             act_delete_file,
             act_toggle_sidebar,
+            act_toggle_details,
             act_add,
             act_del,
             act_zoom_in,
@@ -316,16 +324,22 @@ class MainWindow(QMainWindow):
         self.editor.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
         detail_splitter = QSplitter(Qt.Vertical, self)
+        detail_splitter.setChildrenCollapsible(True)
         detail_splitter.addWidget(table_container)
         detail_splitter.addWidget(self.editor)
         detail_splitter.setStretchFactor(0, 3)
         detail_splitter.setStretchFactor(1, 2)
+        detail_splitter.splitterMoved.connect(self._on_detail_splitter_moved)
+        self.detail_splitter = detail_splitter
 
         right_splitter = QSplitter(Qt.Vertical, self)
+        right_splitter.setChildrenCollapsible(True)
         right_splitter.addWidget(self.canvas)
         right_splitter.addWidget(detail_splitter)
         right_splitter.setStretchFactor(0, 3)
         right_splitter.setStretchFactor(1, 2)
+        right_splitter.splitterMoved.connect(self._on_right_splitter_moved)
+        self.right_splitter = right_splitter
 
         splitter = QSplitter(Qt.Horizontal, self)
         splitter.setChildrenCollapsible(True)
@@ -338,6 +352,10 @@ class MainWindow(QMainWindow):
         initial_left = min(left_panel.maximumWidth(), 320)
         splitter.setSizes([initial_left, max(500, self.width() - initial_left)])
         splitter.splitterMoved.connect(self._on_splitter_moved)
+
+        default_detail = [max(300, int(self.height() * 0.55)), max(240, int(self.height() * 0.35))]
+        self.right_splitter.setSizes(default_detail)
+        self._detail_sizes = self.right_splitter.sizes()
 
         # Controller y conexiones -------------------------------------------------
         self.controller = FeatureController(self.doc, self.table, self.canvas, self.editor)
@@ -444,6 +462,31 @@ class MainWindow(QMainWindow):
     def _on_splitter_moved(self, pos, index):
         if self.left_panel.isVisible():
             self._sidebar_width = self.left_panel.width()
+
+    def on_toggle_details(self, checked):
+        if not hasattr(self, "right_splitter") or not hasattr(self, "detail_splitter"):
+            return
+        self._detail_visible = checked
+        if checked:
+            self.detail_splitter.show()
+            if self._detail_sizes and sum(self._detail_sizes) > 0:
+                self.right_splitter.setSizes(self._detail_sizes)
+            else:
+                height = max(self.right_splitter.height(), 1)
+                self.right_splitter.setSizes([int(height * 0.7), int(height * 0.3)])
+        else:
+            self._detail_sizes = self.right_splitter.sizes()
+            self.detail_splitter.hide()
+            total = sum(self._detail_sizes) or max(self.right_splitter.height(), 1)
+            self.right_splitter.setSizes([total, 0])
+
+    def _on_right_splitter_moved(self, pos, index):
+        if self._detail_visible:
+            self._detail_sizes = self.right_splitter.sizes()
+
+    def _on_detail_splitter_moved(self, pos, index):
+        if self._detail_visible:
+            self._detail_sizes = self.right_splitter.sizes()
 
     def _start_record_loader(self, *, mode, path=None, entrez_params=None):
         if self._loader and self._loader.isRunning():
