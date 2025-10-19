@@ -35,6 +35,13 @@ class GenomeCanvas(QWidget):
         ]
         self._type_colors = {}
         self._palette_idx = 0
+        self._base_colors = {
+            "A": "#F59E0B",
+            "T": "#38BDF8",
+            "C": "#22C55E",
+            "G": "#EF4444",
+        }
+        self._sequence_threshold = 260
 
         self.canvas.mpl_connect("scroll_event", self._on_scroll)
         self.canvas.mpl_connect("button_press_event", self._on_press)
@@ -74,7 +81,8 @@ class GenomeCanvas(QWidget):
         width = max(50, min(width, len(self.record.seq)))
         new_left = cx - width / 2.0
         new_right = cx + width / 2.0
-        self._apply_xlim(new_left, new_right)
+        self._apply_xlim(new_left, new_right, repaint=False)
+        self._redraw()
 
     def reset_view(self):
         if not self.record:
@@ -155,6 +163,7 @@ class GenomeCanvas(QWidget):
             )
             self._feature_regions.append((idx, start, end))
 
+        self._draw_sequence_letters()
         self.canvas.draw_idle()
 
     # --- Matplotlib interactions --------------------------------------------
@@ -169,7 +178,8 @@ class GenomeCanvas(QWidget):
         relx = (xdata - cur_xlim[0]) / (cur_xlim[1] - cur_xlim[0])
         new_left = xdata - new_width * relx
         new_right = new_left + new_width
-        self._apply_xlim(new_left, new_right)
+        self._apply_xlim(new_left, new_right, repaint=False)
+        self._redraw()
 
     def _on_press(self, event):
         if event.button == 1:
@@ -204,11 +214,11 @@ class GenomeCanvas(QWidget):
             x1 = x0 + width
             self.ax.set_xlim(x0, x1)
             self._last_xlim = (x0, x1)
-        self.canvas.draw_idle()
+        self._redraw()
 
     # --- Utilities -----------------------------------------------------------
 
-    def _apply_xlim(self, left, right, repaint=True):
+    def _apply_xlim(self, left, right, repaint=False):
         if self.record is None:
             return
         L = len(self.record.seq)
@@ -226,6 +236,45 @@ class GenomeCanvas(QWidget):
         self._last_xlim = (left, right)
         if repaint:
             self.canvas.draw_idle()
+
+    def _draw_sequence_letters(self):
+        if self.record is None:
+            return
+        x0, x1 = self.ax.get_xlim()
+        window = x1 - x0
+        if window > self._sequence_threshold:
+            return
+        sequence = str(self.record.seq)
+        if not sequence:
+            return
+        start = max(0, int(x0))
+        end = min(len(sequence), int(x1) + 1)
+        y_bottom = 0.7
+        height = 1.4
+        for pos in range(start, end):
+            base = sequence[pos].upper()
+            color = self._base_colors.get(base, "#CBD5F5")
+            rect = Rectangle(
+                (pos, y_bottom),
+                1,
+                height,
+                facecolor=color,
+                edgecolor="none",
+                alpha=0.35,
+                zorder=1.5,
+            )
+            self.ax.add_patch(rect)
+            self.ax.text(
+                pos + 0.5,
+                y_bottom + height / 2,
+                base,
+                fontsize=8,
+                color="#111827",
+                ha="center",
+                va="center",
+                zorder=3.5,
+                clip_on=True,
+            )
 
     def _feature_at(self, xdata):
         for idx, start, end in self._feature_regions:
@@ -248,4 +297,3 @@ class GenomeCanvas(QWidget):
         if isinstance(val, str):
             return val
         return None
-

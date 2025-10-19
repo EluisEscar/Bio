@@ -20,6 +20,7 @@ from PyQt5.QtWidgets import (
     QSpinBox,
     QSizePolicy,
     QComboBox,
+    QToolButton,
     QProgressDialog,
 )
 from PyQt5.QtCore import Qt
@@ -195,8 +196,6 @@ class MainWindow(QMainWindow):
             act_save,
             act_save_as,
             act_delete_file,
-            act_toggle_sidebar,
-            act_toggle_details,
             act_add,
             act_del,
             act_zoom_in,
@@ -204,6 +203,20 @@ class MainWindow(QMainWindow):
             act_zoom_reset,
         ):
             toolbar.addAction(action)
+
+        view_menu = self.menuBar().addMenu("Vista")
+        view_menu.addAction(act_toggle_sidebar)
+        view_menu.addAction(act_toggle_details)
+        view_menu.addSeparator()
+        view_menu.addAction(act_zoom_in)
+        view_menu.addAction(act_zoom_out)
+        view_menu.addAction(act_zoom_reset)
+
+        view_button = QToolButton(self)
+        view_button.setText("Vista")
+        view_button.setPopupMode(QToolButton.InstantPopup)
+        view_button.setMenu(view_menu)
+        toolbar.addWidget(view_button)
 
         # Panel izquierdo: guía y resumen
         left_panel = QWidget(self)
@@ -352,8 +365,7 @@ class MainWindow(QMainWindow):
         initial_left = min(left_panel.maximumWidth(), 320)
         splitter.setSizes([initial_left, max(500, self.width() - initial_left)])
         splitter.splitterMoved.connect(self._on_splitter_moved)
-
-        default_detail = [max(300, int(self.height() * 0.55)), max(240, int(self.height() * 0.35))]
+        default_detail = [max(320, int(self.height() * 0.55)), max(200, int(self.height() * 0.35))]
         self.right_splitter.setSizes(default_detail)
         self._detail_sizes = self.right_splitter.sizes()
 

@@ -6,6 +6,7 @@ Visor interactivo de anotaciones genómicas desde archivos **GenBank** con capac
 - Panel de bienvenida con guía rápida y resumen del genoma cargado (ID, longitud, topología, ruta del archivo).
 - Barra de herramientas con accesos directos para abrir/guardar, añadir/eliminar y controlar el zoom.
 - Canvas interactivo con zoom dinámico (botones + rueda), desplazamiento fluido y resaltado de la anotación seleccionada.
+- Al acercar el zoom se renderiza la secuencia nucleotídica (A/T/C/G) estilo IGV para inspección detallada.
 - Buscador instantáneo de anotaciones + tabla editable sincronizada con el visor.
 - Editor dedicado de *features* para modificar tipo, rango, orientación y metadatos con validación básica.
 - Importar genomas directamente desde NCBI (Entrez) indicando accession, término de búsqueda o palabra clave.
