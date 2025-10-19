@@ -45,8 +45,6 @@ class EntrezImportDialog(QDialog):
         self.email_edit.setPlaceholderText("correo@institucion.edu (requerido por NCBI)")
         self.db_combo = QComboBox()
         self.db_combo.addItem("Nucleótidos (nuccore)", "nuccore")
-        self.db_combo.addItem("Proteínas (protein)", "protein")
-        self.db_combo.addItem("Genomas RefSeq (assembly)", "assembly")
         self.retmax_spin = QSpinBox()
         self.retmax_spin.setRange(1, 20)
         self.retmax_spin.setValue(5)
@@ -65,7 +63,8 @@ class EntrezImportDialog(QDialog):
 
         info = QLabel(
             "NCBI requiere un correo electrónico válido para monitorizar el uso. "
-            "Usaremos el primer resultado devuelto por Entrez."
+            "Usaremos el primer resultado devuelto por Entrez. "
+            "Actualmente esta aplicación solo descarga secuencias NUCLEOTÍDICAS (nuccore) para fortalecer el aprendizaje en ADN."
         )
         info.setWordWrap(True)
         layout.addWidget(info)
