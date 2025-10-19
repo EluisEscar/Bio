@@ -8,6 +8,7 @@ Visor interactivo de anotaciones genómicas desde archivos **GenBank** con capac
 - Canvas interactivo con zoom dinámico (botones + rueda), desplazamiento fluido y resaltado de la anotación seleccionada.
 - Buscador instantáneo de anotaciones + tabla editable sincronizada con el visor.
 - Editor dedicado de *features* para modificar tipo, rango, orientación y metadatos con validación básica.
+- Importar genomas directamente desde NCBI (Entrez) indicando accession, término de búsqueda o palabra clave.
 - Añadir/eliminar *features* manualmente y exportar manteniendo el formato GenBank.
 - **Patrón Observer** simple mediante un *EventBus* para desacoplar Modelo/Views.
 
@@ -31,6 +32,11 @@ Se cargará automáticamente un ejemplo (`data/example.gb`). También puedes abr
 - **Zoom:** botones `Zoom +`, `Zoom −`, rueda del mouse o gesto de pinza (trackpad).
 - **Pan:** click y arrastrar con el botón izquierdo.
 - **Vista completa:** botón `Ver todo` de la barra superior o `home` de la toolbar de matplotlib.
+
+### Importar desde NCBI (Entrez)
+- Selecciona `Importar desde NCBI…` en la barra superior, introduce un término (acc/ID o palabras clave) y un correo electrónico válido (exigido por NCBI).
+- Opcionalmente añade un API key de NCBI para disfrutar de límites de consulta más altos.
+- El visor cargará automáticamente el primer resultado devuelto por Entrez y lo marcará como procedente de NCBI.
 
 ### Edición
 - Selecciona una anotación y usa el panel inferior para modificar tipo, inicio, fin, orientación y metadatos (`clave=valor; ...`).

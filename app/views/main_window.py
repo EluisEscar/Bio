@@ -1,15 +1,98 @@
 import os
-from PyQt5.QtWidgets import (QMainWindow,QWidget,QFileDialog,QMessageBox,QAction,QSplitter,QTableWidget,
-    QVBoxLayout,QToolBar,QDialog,QFormLayout,QLineEdit,QDialogButtonBox,QLabel,QGroupBox,QHBoxLayout,QPushButton,QSpinBox,QSizePolicy,
+from PyQt5.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QFileDialog,
+    QMessageBox,
+    QAction,
+    QSplitter,
+    QTableWidget,
+    QVBoxLayout,
+    QToolBar,
+    QDialog,
+    QFormLayout,
+    QLineEdit,
+    QDialogButtonBox,
+    QLabel,
+    QGroupBox,
+    QHBoxLayout,
+    QPushButton,
+    QSpinBox,
+    QSizePolicy,
+    QComboBox,
 )
 from PyQt5.QtCore import Qt
 
 from ..models import GenomeDocument
 from ..event_bus import bus
-from ..io import make_demo_record
+from ..io import make_demo_record, fetch_genbank_from_entrez
 from ..controllers.feature_controller import FeatureController
 from .genome_canvas import GenomeCanvas
 from .feature_editor import FeatureEditorPanel
+
+
+class EntrezImportDialog(QDialog):
+    def __init__(self, parent=None, default_email="", default_api_key="", default_db="nuccore"):
+        super().__init__(parent)
+        self.setWindowTitle("Importar desde NCBI (Entrez)")
+
+        self.query_edit = QLineEdit()
+        self.query_edit.setPlaceholderText("Accession, nombre de gen o término de búsqueda…")
+        self.email_edit = QLineEdit(default_email)
+        self.email_edit.setPlaceholderText("correo@institucion.edu (requerido por NCBI)")
+        self.api_key_edit = QLineEdit(default_api_key)
+        self.api_key_edit.setPlaceholderText("Opcional, si tienes API key de NCBI")
+        self.db_combo = QComboBox()
+        self.db_combo.addItem("Nucleótidos (nuccore)", "nuccore")
+        self.db_combo.addItem("Proteínas (protein)", "protein")
+        self.db_combo.addItem("Genomas RefSeq (assembly)", "assembly")
+        self.retmax_spin = QSpinBox()
+        self.retmax_spin.setRange(1, 20)
+        self.retmax_spin.setValue(5)
+        for idx in range(self.db_combo.count()):
+            if self.db_combo.itemData(idx) == default_db:
+                self.db_combo.setCurrentIndex(idx)
+                break
+
+        layout = QVBoxLayout(self)
+        form = QFormLayout()
+        form.addRow("Consulta*", self.query_edit)
+        form.addRow("Base de datos", self.db_combo)
+        form.addRow("Resultados a explorar", self.retmax_spin)
+        form.addRow("Correo electrónico*", self.email_edit)
+        form.addRow("API key", self.api_key_edit)
+        layout.addLayout(form)
+
+        info = QLabel(
+            "NCBI requiere un correo electrónico válido para monitorizar el uso. "
+            "Usaremos el primer resultado devuelto por Entrez."
+        )
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+        layout.addWidget(self.buttons)
+
+    def accept(self):
+        if not self.query_edit.text().strip():
+            QMessageBox.warning(self, "Falta información", "Introduce un término de búsqueda o accession.")
+            return
+        if not self.email_edit.text().strip():
+            QMessageBox.warning(self, "Correo requerido", "Debes proporcionar un correo electrónico para NCBI.")
+            return
+        super().accept()
+
+    def values(self):
+        return {
+            "query": self.query_edit.text().strip(),
+            "db": self.db_combo.currentData(),
+            "retmax": self.retmax_spin.value(),
+            "email": self.email_edit.text().strip(),
+            "api_key": self.api_key_edit.text().strip() or None,
+        }
 
 
 class AddFeatureDialog(QDialog):
@@ -61,11 +144,16 @@ class MainWindow(QMainWindow):
         self.resize(1500, 900)
 
         self.doc = GenomeDocument()
+        self._entrez_email = os.environ.get("NCBI_ENTREZ_EMAIL", "")
+        self._entrez_api_key = os.environ.get("NCBI_ENTREZ_API_KEY", "")
+        self._entrez_db = os.environ.get("NCBI_ENTREZ_DB", "nuccore")
+        self._last_import_source = None
 
         # Toolbar
         toolbar = QToolBar("Principal", self)
         self.addToolBar(toolbar)
         act_open = QAction("Abrir…", self)
+        act_import_entrez = QAction("Importar desde NCBI…", self)
         act_save = QAction("Guardar", self)
         act_save_as = QAction("Guardar como…", self)
         act_add = QAction("Añadir característica", self)
@@ -75,6 +163,7 @@ class MainWindow(QMainWindow):
         act_zoom_reset = QAction("Ver todo", self)
 
         act_open.triggered.connect(self.on_open)
+        act_import_entrez.triggered.connect(self.on_import_entrez)
         act_save.triggered.connect(self.on_save)
         act_save_as.triggered.connect(self.on_save_as)
         act_add.triggered.connect(self.on_add_feature)
@@ -83,7 +172,17 @@ class MainWindow(QMainWindow):
         act_zoom_out.triggered.connect(lambda: self.canvas.zoom(1.25))
         act_zoom_reset.triggered.connect(self.on_reset_view)
 
-        for action in (act_open,act_save,act_save_as,act_add,act_del,act_zoom_in,act_zoom_out,act_zoom_reset,):
+        for action in (
+            act_open,
+            act_import_entrez,
+            act_save,
+            act_save_as,
+            act_add,
+            act_del,
+            act_zoom_in,
+            act_zoom_out,
+            act_zoom_reset,
+        ):
             toolbar.addAction(action)
 
         # Panel izquierdo: guía y resumen
@@ -242,6 +341,50 @@ class MainWindow(QMainWindow):
     # ---------------------------------------------------------------------
     # Acciones de la interfaz
     # ---------------------------------------------------------------------
+    def on_import_entrez(self):
+        dialog = EntrezImportDialog(
+            self,
+            default_email=self._entrez_email,
+            default_api_key=self._entrez_api_key,
+            default_db=self._entrez_db,
+        )
+        if dialog.exec_() != QDialog.Accepted:
+            return
+        params = dialog.values()
+        self._entrez_email = params["email"]
+        self._entrez_db = params["db"]
+        self._entrez_api_key = params.get("api_key") or ""
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            record, info = fetch_genbank_from_entrez(
+                query=params["query"],
+                db=params["db"],
+                retmax=params["retmax"],
+                email=params["email"],
+                api_key=params.get("api_key"),
+            )
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "No se pudo importar",
+                f"Ocurrió un problema al consultar NCBI:\n{exc}",
+            )
+            return
+        finally:
+            QApplication.restoreOverrideCursor()
+
+        accession = info.get("accession") or info.get("id")
+        self._last_import_source = f"NCBI:{accession}"
+        self.doc.set_record(record)
+        count = int(info.get("count", 0))
+        extra = ""
+        if count > 1:
+            extra = f" (primer resultado de {count})"
+        self.statusBar().showMessage(
+            f"Importado {accession} desde {info.get('db', 'NCBI')}{extra}",
+            5000,
+        )
+
     def on_open(self):
         path, _ = QFileDialog.getOpenFileName(
             self, "Abrir GenBank", "", "GenBank (*.gb *.gbk);;Todos los archivos (*)"
@@ -323,6 +466,9 @@ class MainWindow(QMainWindow):
         self.view_width_spin.setEnabled(True)
         self.goto_button.setEnabled(True)
         self.editor.set_sequence_length(length)
+        if self._last_import_source:
+            self.summary_labels["path"].setText(self._last_import_source)
+            self._last_import_source = None
 
     def on_features_changed_event(self, record):
         if record:
