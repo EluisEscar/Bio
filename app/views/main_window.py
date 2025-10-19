@@ -1,24 +1,6 @@
 import os
-from PyQt5.QtWidgets import (
-    QMainWindow,
-    QWidget,
-    QFileDialog,
-    QMessageBox,
-    QAction,
-    QSplitter,
-    QTableWidget,
-    QVBoxLayout,
-    QToolBar,
-    QDialog,
-    QFormLayout,
-    QLineEdit,
-    QDialogButtonBox,
-    QLabel,
-    QGroupBox,
-    QHBoxLayout,
-    QPushButton,
-    QSpinBox,
-    QSizePolicy,
+from PyQt5.QtWidgets import (QMainWindow,QWidget,QFileDialog,QMessageBox,QAction,QSplitter,QTableWidget,
+    QVBoxLayout,QToolBar,QDialog,QFormLayout,QLineEdit,QDialogButtonBox,QLabel,QGroupBox,QHBoxLayout,QPushButton,QSpinBox,QSizePolicy,
 )
 from PyQt5.QtCore import Qt
 
@@ -115,7 +97,8 @@ class MainWindow(QMainWindow):
 
         # Panel izquierdo: guía y resumen --------------------------------------
         left_panel = QWidget(self)
-        left_panel.setMinimumWidth(280)
+        left_panel.setMinimumWidth(200)
+        left_panel.setMaximumWidth(350)
         left_layout = QVBoxLayout(left_panel)
 
         summary_box = QGroupBox("Resumen del genoma", left_panel)
@@ -197,7 +180,7 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(guide_box)
         left_layout.addStretch(1)
 
-        # Panel derecho: visor + tabla + editor ---------------------------------
+        # Panel derecho
         self.canvas = GenomeCanvas(self)
 
         table_container = QWidget(self)
