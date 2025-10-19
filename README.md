@@ -9,6 +9,7 @@ Visor interactivo de anotaciones genómicas desde archivos **GenBank** con capac
 - Buscador instantáneo de anotaciones + tabla editable sincronizada con el visor.
 - Editor dedicado de *features* para modificar tipo, rango, orientación y metadatos con validación básica.
 - Importar genomas directamente desde NCBI (Entrez) indicando accession, término de búsqueda o palabra clave.
+- Carga asíncrona de archivos pesados para mantener la interfaz fluida mientras se importan grandes genomas.
 - Añadir/eliminar *features* manualmente y exportar manteniendo el formato GenBank.
 - **Patrón Observer** simple mediante un *EventBus* para desacoplar Modelo/Views.
 

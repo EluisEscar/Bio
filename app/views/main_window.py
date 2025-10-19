@@ -1,6 +1,5 @@
 import os
 from PyQt5.QtWidgets import (
-    QApplication,
     QMainWindow,
     QWidget,
     QFileDialog,
@@ -21,19 +20,21 @@ from PyQt5.QtWidgets import (
     QSpinBox,
     QSizePolicy,
     QComboBox,
+    QProgressDialog,
 )
 from PyQt5.QtCore import Qt
 
 from ..models import GenomeDocument
 from ..event_bus import bus
-from ..io import make_demo_record, fetch_genbank_from_entrez
+from ..io import make_demo_record
 from ..controllers.feature_controller import FeatureController
 from .genome_canvas import GenomeCanvas
 from .feature_editor import FeatureEditorPanel
+from ..workers import RecordLoadWorker
 
 
 class EntrezImportDialog(QDialog):
-    def __init__(self, parent=None, default_email="", default_api_key="", default_db="nuccore"):
+    def __init__(self, parent=None, default_email="", default_db="nuccore"):
         super().__init__(parent)
         self.setWindowTitle("Importar desde NCBI (Entrez)")
 
@@ -41,8 +42,6 @@ class EntrezImportDialog(QDialog):
         self.query_edit.setPlaceholderText("Accession, nombre de gen o término de búsqueda…")
         self.email_edit = QLineEdit(default_email)
         self.email_edit.setPlaceholderText("correo@institucion.edu (requerido por NCBI)")
-        self.api_key_edit = QLineEdit(default_api_key)
-        self.api_key_edit.setPlaceholderText("Opcional, si tienes API key de NCBI")
         self.db_combo = QComboBox()
         self.db_combo.addItem("Nucleótidos (nuccore)", "nuccore")
         self.db_combo.addItem("Proteínas (protein)", "protein")
@@ -61,7 +60,6 @@ class EntrezImportDialog(QDialog):
         form.addRow("Base de datos", self.db_combo)
         form.addRow("Resultados a explorar", self.retmax_spin)
         form.addRow("Correo electrónico*", self.email_edit)
-        form.addRow("API key", self.api_key_edit)
         layout.addLayout(form)
 
         info = QLabel(
@@ -90,8 +88,7 @@ class EntrezImportDialog(QDialog):
             "query": self.query_edit.text().strip(),
             "db": self.db_combo.currentData(),
             "retmax": self.retmax_spin.value(),
-            "email": self.email_edit.text().strip(),
-            "api_key": self.api_key_edit.text().strip() or None,
+            "email": self.email_edit.text().strip()
         }
 
 
@@ -148,6 +145,9 @@ class MainWindow(QMainWindow):
         self._entrez_api_key = os.environ.get("NCBI_ENTREZ_API_KEY", "")
         self._entrez_db = os.environ.get("NCBI_ENTREZ_DB", "nuccore")
         self._last_import_source = None
+        self._loader = None
+        self._loading_dialog = None
+        self._sidebar_width = 300
 
         # Toolbar
         toolbar = QToolBar("Principal", self)
@@ -156,6 +156,10 @@ class MainWindow(QMainWindow):
         act_import_entrez = QAction("Importar desde NCBI…", self)
         act_save = QAction("Guardar", self)
         act_save_as = QAction("Guardar como…", self)
+        act_delete_file = QAction("Eliminar archivo…", self)
+        act_toggle_sidebar = QAction("Mostrar panel guía", self)
+        act_toggle_sidebar.setCheckable(True)
+        act_toggle_sidebar.setChecked(True)
         act_add = QAction("Añadir característica", self)
         act_del = QAction("Eliminar característica", self)
         act_zoom_in = QAction("Zoom +", self)
@@ -166,17 +170,25 @@ class MainWindow(QMainWindow):
         act_import_entrez.triggered.connect(self.on_import_entrez)
         act_save.triggered.connect(self.on_save)
         act_save_as.triggered.connect(self.on_save_as)
+        act_delete_file.triggered.connect(self.on_delete_file)
+        act_toggle_sidebar.toggled.connect(self.on_toggle_sidebar)
         act_add.triggered.connect(self.on_add_feature)
         act_del.triggered.connect(self.on_del_feature)
         act_zoom_in.triggered.connect(lambda: self.canvas.zoom(0.8))
         act_zoom_out.triggered.connect(lambda: self.canvas.zoom(1.25))
         act_zoom_reset.triggered.connect(self.on_reset_view)
 
+        act_delete_file.setEnabled(False)
+        self.act_delete_file = act_delete_file
+        self.act_toggle_sidebar = act_toggle_sidebar
+
         for action in (
             act_open,
             act_import_entrez,
             act_save,
             act_save_as,
+            act_delete_file,
+            act_toggle_sidebar,
             act_add,
             act_del,
             act_zoom_in,
@@ -187,9 +199,10 @@ class MainWindow(QMainWindow):
 
         # Panel izquierdo: guía y resumen
         left_panel = QWidget(self)
-        left_panel.setMinimumWidth(200)
-        left_panel.setMaximumWidth(350)
+        left_panel.setMinimumWidth(140)
+        left_panel.setMaximumWidth(360)
         left_layout = QVBoxLayout(left_panel)
+        self.left_panel = left_panel
 
         summary_box = QGroupBox("Resumen del genoma", left_panel)
         summary_form = QFormLayout(summary_box)
@@ -315,11 +328,16 @@ class MainWindow(QMainWindow):
         right_splitter.setStretchFactor(1, 2)
 
         splitter = QSplitter(Qt.Horizontal, self)
+        splitter.setChildrenCollapsible(True)
         splitter.addWidget(left_panel)
         splitter.addWidget(right_splitter)
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
         self.setCentralWidget(splitter)
+        self.primary_splitter = splitter
+        initial_left = min(left_panel.maximumWidth(), 320)
+        splitter.setSizes([initial_left, max(500, self.width() - initial_left)])
+        splitter.splitterMoved.connect(self._on_splitter_moved)
 
         # Controller y conexiones -------------------------------------------------
         self.controller = FeatureController(self.doc, self.table, self.canvas, self.editor)
@@ -345,7 +363,6 @@ class MainWindow(QMainWindow):
         dialog = EntrezImportDialog(
             self,
             default_email=self._entrez_email,
-            default_api_key=self._entrez_api_key,
             default_db=self._entrez_db,
         )
         if dialog.exec_() != QDialog.Accepted:
@@ -353,47 +370,14 @@ class MainWindow(QMainWindow):
         params = dialog.values()
         self._entrez_email = params["email"]
         self._entrez_db = params["db"]
-        self._entrez_api_key = params.get("api_key") or ""
-        QApplication.setOverrideCursor(Qt.WaitCursor)
-        try:
-            record, info = fetch_genbank_from_entrez(
-                query=params["query"],
-                db=params["db"],
-                retmax=params["retmax"],
-                email=params["email"],
-                api_key=params.get("api_key"),
-            )
-        except Exception as exc:
-            QMessageBox.critical(
-                self,
-                "No se pudo importar",
-                f"Ocurrió un problema al consultar NCBI:\n{exc}",
-            )
-            return
-        finally:
-            QApplication.restoreOverrideCursor()
-
-        accession = info.get("accession") or info.get("id")
-        self._last_import_source = f"NCBI:{accession}"
-        self.doc.set_record(record)
-        count = int(info.get("count", 0))
-        extra = ""
-        if count > 1:
-            extra = f" (primer resultado de {count})"
-        self.statusBar().showMessage(
-            f"Importado {accession} desde {info.get('db', 'NCBI')}{extra}",
-            5000,
-        )
+        self._start_record_loader(mode="entrez", entrez_params=params)
 
     def on_open(self):
         path, _ = QFileDialog.getOpenFileName(
             self, "Abrir GenBank", "", "GenBank (*.gb *.gbk);;Todos los archivos (*)"
         )
         if path:
-            try:
-                self.doc.load(path)
-            except Exception as exc:
-                QMessageBox.critical(self, "Error al abrir", str(exc))
+            self._start_record_loader(mode="file", path=path)
 
     def on_save(self):
         try:
@@ -441,12 +425,132 @@ class MainWindow(QMainWindow):
         span = self.view_width_spin.value()
         self.canvas.center_on(position, span)
 
+    def on_toggle_sidebar(self, checked):
+        if not hasattr(self, "left_panel") or not hasattr(self, "primary_splitter"):
+            return
+        if checked:
+            target = max(160, min(self.left_panel.maximumWidth(), self._sidebar_width))
+            self.left_panel.show()
+            total = max(self.primary_splitter.width(), target + 300)
+            self.primary_splitter.setSizes([target, total - target])
+        else:
+            current = self.left_panel.width()
+            if current:
+                self._sidebar_width = current
+            self.left_panel.hide()
+            total = max(self.primary_splitter.width(), 1)
+            self.primary_splitter.setSizes([0, total])
+
+    def _on_splitter_moved(self, pos, index):
+        if self.left_panel.isVisible():
+            self._sidebar_width = self.left_panel.width()
+
+    def _start_record_loader(self, *, mode, path=None, entrez_params=None):
+        if self._loader and self._loader.isRunning():
+            QMessageBox.information(
+                self,
+                "Carga en curso",
+                "Ya hay una operación de carga ejecutándose. Espera a que termine antes de iniciar otra.",
+            )
+            return
+        self._loading_dialog = QProgressDialog(
+            "Cargando anotaciones…", "Cancelar", 0, 0, self
+        )
+        self._loading_dialog.setWindowTitle("Importando GenBank")
+        self._loading_dialog.setWindowModality(Qt.ApplicationModal)
+        self._loading_dialog.canceled.connect(self._cancel_loader)
+        self._loading_dialog.show()
+
+        self._loader = RecordLoadWorker(
+            mode=mode,
+            path=path,
+            entrez_params=entrez_params or {},
+            parent=self,
+        )
+        self._loader.completed.connect(self._on_loader_completed)
+        self._loader.failed.connect(self._on_loader_failed)
+        self._loader.finished.connect(self._clear_loader)
+        self._loader.start()
+
+    def _cancel_loader(self):
+        if self._loader and self._loader.isRunning():
+            self._loader.requestInterruption()
+            if self._loading_dialog:
+                self._loading_dialog.setLabelText("Cancelando… espera un momento.")
+                self._loading_dialog.setCancelButton(None)
+
+    def _on_loader_completed(self, record, info):
+        self._close_loading_dialog()
+        mode = info.get("mode")
+        if mode == "file":
+            path = info.get("path")
+            self._last_import_source = None
+            self._apply_loaded_record(record, path)
+            if path:
+                basename = os.path.basename(path)
+                self.statusBar().showMessage(f"Archivo cargado: {basename}", 4000)
+        elif mode == "entrez":
+            accession = info.get("accession") or info.get("id")
+            self._last_import_source = f"NCBI:{accession}" if accession else "NCBI"
+            self._apply_loaded_record(record, None)
+            count = int(info.get("count", 0))
+            extra = ""
+            if count > 1:
+                extra = f" (primer resultado de {count})"
+            self.statusBar().showMessage(
+                f"Importado {accession or 'registro'} desde {info.get('db', 'NCBI')}{extra}",
+                5000,
+            )
+        else:
+            self._apply_loaded_record(record, None)
+
+    def _on_loader_failed(self, error_message, context):
+        self._close_loading_dialog()
+        mode = context.get("mode")
+        if mode == "file":
+            path = context.get("path") or ""
+            QMessageBox.critical(
+                self,
+                "No se pudo abrir el archivo",
+                f"El archivo no pudo cargarse.\n\nRuta: {path}\nError: {error_message}",
+            )
+        elif mode == "entrez":
+            query = context.get("query", "")
+            QMessageBox.critical(
+                self,
+                "No se pudo importar desde NCBI",
+                f"No se pudo completar la descarga para «{query}».\n\nDetalle: {error_message}",
+            )
+        else:
+            QMessageBox.critical(
+                self,
+                "Error de carga",
+                error_message,
+            )
+
+    def _apply_loaded_record(self, record, path):
+        self.doc.record = record
+        self.doc.filepath = path
+        self.doc.dirty = False
+        bus.publish("record_loaded", record=record)
+        self._update_file_actions()
+
+    def _close_loading_dialog(self):
+        if self._loading_dialog:
+            self._loading_dialog.hide()
+            self._loading_dialog.deleteLater()
+            self._loading_dialog = None
+
+    def _clear_loader(self):
+        self._loader = None
+
     # ---------------------------------------------------------------------
     # Respuestas a eventos del modelo
     # ---------------------------------------------------------------------
     def on_record_saved(self, path):
         self.statusBar().showMessage(f"Guardado: {path}", 3000)
         self.summary_labels["path"].setText(path)
+        self._update_file_actions()
 
     def on_record_loaded_event(self, record):
         if not record:
@@ -469,6 +573,7 @@ class MainWindow(QMainWindow):
         if self._last_import_source:
             self.summary_labels["path"].setText(self._last_import_source)
             self._last_import_source = None
+        self._update_file_actions()
 
     def on_features_changed_event(self, record):
         if record:
@@ -484,3 +589,52 @@ class MainWindow(QMainWindow):
         topology = record.annotations.get("topology") or record.annotations.get("molecule_type")
         self.summary_labels["topology"].setText(str(topology) if topology else "—")
         self.summary_labels["path"].setText(self.doc.filepath or "—")
+        self._update_file_actions()
+
+    def on_delete_file(self):
+        path = self.doc.filepath
+        if not path:
+            QMessageBox.information(
+                self,
+                "Sin archivo asociado",
+                "No hay un archivo GenBank asociado a este documento. Usa «Guardar como…» para crear uno.",
+            )
+            return
+        if not os.path.exists(path):
+            QMessageBox.warning(
+                self,
+                "Archivo no encontrado",
+                f"El archivo {path} ya no existe en el disco.",
+            )
+            self.doc.filepath = None
+            self.summary_labels["path"].setText("—")
+            self._update_file_actions()
+            return
+        reply = QMessageBox.question(
+            self,
+            "Eliminar archivo",
+            f"¿Seguro que quieres eliminar el archivo GenBank?\n\n{path}",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+        try:
+            os.remove(path)
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "No se pudo eliminar",
+                f"Ocurrió un error al eliminar el archivo:\n{exc}",
+            )
+            return
+        self.doc.filepath = None
+        self.doc.dirty = True
+        self.summary_labels["path"].setText("Archivo eliminado")
+        self.statusBar().showMessage("Archivo GenBank eliminado.", 4000)
+        self._update_file_actions()
+
+    def _update_file_actions(self):
+        path = self.doc.filepath
+        can_delete = bool(path and os.path.exists(path))
+        self.act_delete_file.setEnabled(can_delete)
