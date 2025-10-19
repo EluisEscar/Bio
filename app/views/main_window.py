@@ -22,6 +22,7 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QToolButton,
     QProgressDialog,
+    QSlider,
 )
 from PyQt5.QtCore import Qt
 
@@ -359,7 +360,18 @@ class MainWindow(QMainWindow):
         splitter.addWidget(right_splitter)
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
-        self.setCentralWidget(splitter)
+        container = QWidget(self)
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(6)
+        container_layout.addWidget(splitter, 1)
+        self.view_slider = QSlider(Qt.Horizontal, self)
+        self.view_slider.setRange(0, 0)
+        self.view_slider.setEnabled(False)
+        self.view_slider.setSingleStep(1)
+        self.view_slider.valueChanged.connect(self.on_slider_changed)
+        container_layout.addWidget(self.view_slider, 0)
+        self.setCentralWidget(container)
         self.primary_splitter = splitter
         initial_left = min(left_panel.maximumWidth(), 320)
         splitter.setSizes([initial_left, max(500, self.width() - initial_left)])
@@ -367,6 +379,9 @@ class MainWindow(QMainWindow):
         default_detail = [max(320, int(self.height() * 0.55)), max(200, int(self.height() * 0.35))]
         self.right_splitter.setSizes(default_detail)
         self._detail_sizes = self.right_splitter.sizes()
+        self._syncing_slider = False
+        self._current_span = 0
+        bus.subscribe("view_changed", self.on_view_changed)
 
         # Controller y conexiones -------------------------------------------------
         self.controller = FeatureController(self.doc, self.table, self.canvas, self.editor)
@@ -454,6 +469,20 @@ class MainWindow(QMainWindow):
         span = self.view_width_spin.value()
         self.canvas.center_on(position, span)
 
+    def on_slider_changed(self, value):
+        if self._syncing_slider:
+            return
+        if not self.canvas.record:
+            return
+        if self._current_span <= 0:
+            return
+        seq_len = len(self.canvas.record.seq)
+        left = max(0, min(value, max(0, seq_len - self._current_span)))
+        right = left + self._current_span
+        self._syncing_slider = True
+        self.canvas.pan_to(left, self._current_span)
+        self._syncing_slider = False
+
     def on_toggle_sidebar(self, checked):
         if not hasattr(self, "left_panel") or not hasattr(self, "primary_splitter"):
             return
@@ -494,6 +523,17 @@ class MainWindow(QMainWindow):
     def _on_right_splitter_moved(self, pos, index):
         if self._detail_visible:
             self._detail_sizes = self.right_splitter.sizes()
+
+    def on_view_changed(self, left, right, length):
+        self._current_span = max(1, int(right - left))
+        max_pos = max(0, int(length - self._current_span))
+        self._syncing_slider = True
+        self.view_slider.blockSignals(True)
+        self.view_slider.setRange(0, max_pos)
+        self.view_slider.setEnabled(max_pos > 0)
+        self.view_slider.setValue(int(left))
+        self.view_slider.blockSignals(False)
+        self._syncing_slider = False
 
     def _on_detail_splitter_moved(self, pos, index):
         if self._detail_visible:

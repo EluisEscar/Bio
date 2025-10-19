@@ -100,6 +100,16 @@ class GenomeCanvas(QWidget):
         self._apply_xlim(left, right)
         self._redraw()
 
+    def pan_to(self, left, span=None):
+        if self.record is None:
+            return
+        if span is None:
+            x0, x1 = self.ax.get_xlim()
+            span = x1 - x0
+        right = left + span
+        self._apply_xlim(left, right, repaint=False)
+        self._redraw()
+
     # --- Drawing -------------------------------------------------------------
 
     def _redraw(self):
@@ -234,6 +244,7 @@ class GenomeCanvas(QWidget):
             right = min(L, center + half)
         self.ax.set_xlim(left, right)
         self._last_xlim = (left, right)
+        bus.publish("view_changed", left=left, right=right, length=L)
         if repaint:
             self.canvas.draw_idle()
 

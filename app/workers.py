@@ -6,10 +6,6 @@ from .io import fetch_genbank_from_entrez
 
 
 class RecordLoadWorker(QThread):
-    """
-    Hilo auxiliar para cargar registros GenBank desde disco o NCBI sin bloquear la UI.
-    """
-
     completed = pyqtSignal(object, dict)
     failed = pyqtSignal(str, dict)
 
