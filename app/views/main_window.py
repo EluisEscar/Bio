@@ -168,8 +168,6 @@ class MainWindow(QMainWindow):
         act_toggle_details.setChecked(True)
         act_add = QAction("Añadir característica", self)
         act_del = QAction("Eliminar característica", self)
-        act_zoom_in = QAction("Zoom +", self)
-        act_zoom_out = QAction("Zoom −", self)
         act_zoom_reset = QAction("Ver todo", self)
 
         act_open.triggered.connect(self.on_open)
@@ -181,8 +179,6 @@ class MainWindow(QMainWindow):
         act_toggle_details.toggled.connect(self.on_toggle_details)
         act_add.triggered.connect(self.on_add_feature)
         act_del.triggered.connect(self.on_del_feature)
-        act_zoom_in.triggered.connect(lambda: self.canvas.zoom(0.8))
-        act_zoom_out.triggered.connect(lambda: self.canvas.zoom(1.25))
         act_zoom_reset.triggered.connect(self.on_reset_view)
 
         act_delete_file.setEnabled(False)
@@ -198,8 +194,6 @@ class MainWindow(QMainWindow):
             act_delete_file,
             act_add,
             act_del,
-            act_zoom_in,
-            act_zoom_out,
             act_zoom_reset,
         ):
             toolbar.addAction(action)
@@ -208,8 +202,6 @@ class MainWindow(QMainWindow):
         view_menu.addAction(act_toggle_sidebar)
         view_menu.addAction(act_toggle_details)
         view_menu.addSeparator()
-        view_menu.addAction(act_zoom_in)
-        view_menu.addAction(act_zoom_out)
         view_menu.addAction(act_zoom_reset)
 
         view_button = QToolButton(self)

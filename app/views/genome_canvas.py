@@ -11,16 +11,7 @@ class GenomeCanvas(QWidget):
         self.fig = Figure()
         self.ax = self.fig.add_subplot(111)
         self.canvas = FigureCanvas(self.fig)
-        self.toolbar = None
-        try:
-            from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavToolbar
-            self.toolbar = NavToolbar(self.canvas, self)
-        except Exception:
-            self.toolbar = None
-
         layout = QVBoxLayout(self)
-        if self.toolbar:
-            layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
 
         self.record = None
