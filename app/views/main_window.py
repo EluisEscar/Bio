@@ -166,8 +166,8 @@ class MainWindow(QMainWindow):
         act_toggle_details = QAction("Mostrar detalles", self)
         act_toggle_details.setCheckable(True)
         act_toggle_details.setChecked(True)
-        act_add = QAction("Añadir característica", self)
-        act_del = QAction("Eliminar característica", self)
+        #act_add = QAction("Añadir característica", self)
+        #act_del = QAction("Eliminar característica", self)
         act_zoom_reset = QAction("Ver todo", self)
 
         act_open.triggered.connect(self.on_open)
@@ -177,8 +177,8 @@ class MainWindow(QMainWindow):
         act_delete_file.triggered.connect(self.on_delete_file)
         act_toggle_sidebar.toggled.connect(self.on_toggle_sidebar)
         act_toggle_details.toggled.connect(self.on_toggle_details)
-        act_add.triggered.connect(self.on_add_feature)
-        act_del.triggered.connect(self.on_del_feature)
+        #act_add.triggered.connect(self.on_add_feature)
+        #act_del.triggered.connect(self.on_del_feature)
         act_zoom_reset.triggered.connect(self.on_reset_view)
 
         act_delete_file.setEnabled(False)
@@ -192,8 +192,8 @@ class MainWindow(QMainWindow):
             act_save,
             act_save_as,
             act_delete_file,
-            act_add,
-            act_del,
+            #act_add,
+            #act_del,
             act_zoom_reset,
         ):
             toolbar.addAction(action)
@@ -311,7 +311,7 @@ class MainWindow(QMainWindow):
 
         action_layout = QHBoxLayout()
         btn_add_feature = QPushButton("Añadir anotación", table_container)
-        btn_remove_feature = QPushButton("Eliminar selección", table_container)
+        btn_remove_feature = QPushButton("Eliminar anotación", table_container)
         btn_add_feature.clicked.connect(self.on_add_feature)
         btn_remove_feature.clicked.connect(self.on_del_feature)
         action_layout.addWidget(btn_add_feature)

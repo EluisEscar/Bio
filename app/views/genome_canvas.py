@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
+from Bio.Seq import UndefinedSequenceError
 from ..event_bus import bus
 
 
@@ -102,7 +103,6 @@ class GenomeCanvas(QWidget):
         self._redraw()
 
     # --- Drawing -------------------------------------------------------------
-
     def _redraw(self):
         prev_xlim = self._last_xlim
         self.ax.clear()
@@ -246,7 +246,10 @@ class GenomeCanvas(QWidget):
         window = x1 - x0
         if window > self._sequence_threshold:
             return
-        sequence = str(self.record.seq)
+        try:
+            sequence = str(self.record.seq)
+        except UndefinedSequenceError:
+            return
         if not sequence:
             return
         start = max(0, int(x0))
