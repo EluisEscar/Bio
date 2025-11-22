@@ -32,6 +32,7 @@ from ..io import make_demo_record
 from ..controllers.feature_controller import FeatureController
 from .genome_canvas import GenomeCanvas
 from .feature_editor import FeatureEditorPanel
+from .bio_help_dialog import BioHelpDialog
 from ..workers import RecordLoadWorker
 
 
@@ -166,6 +167,7 @@ class MainWindow(QMainWindow):
         act_toggle_details = QAction("Mostrar detalles", self)
         act_toggle_details.setCheckable(True)
         act_toggle_details.setChecked(True)
+        act_bio_help = QAction("Ayuda bio (LLM)", self)
         #act_add = QAction("Añadir característica", self)
         #act_del = QAction("Eliminar característica", self)
         act_zoom_reset = QAction("Ver todo", self)
@@ -177,6 +179,7 @@ class MainWindow(QMainWindow):
         act_delete_file.triggered.connect(self.on_delete_file)
         act_toggle_sidebar.toggled.connect(self.on_toggle_sidebar)
         act_toggle_details.toggled.connect(self.on_toggle_details)
+        act_bio_help.triggered.connect(self.on_open_bio_help)
         #act_add.triggered.connect(self.on_add_feature)
         #act_del.triggered.connect(self.on_del_feature)
         act_zoom_reset.triggered.connect(self.on_reset_view)
@@ -192,6 +195,7 @@ class MainWindow(QMainWindow):
             act_save,
             act_save_as,
             act_delete_file,
+            act_bio_help,
             #act_add,
             #act_del,
             act_zoom_reset,
@@ -407,6 +411,10 @@ class MainWindow(QMainWindow):
         self._entrez_email = params["email"]
         self._entrez_db = params["db"]
         self._start_record_loader(mode="entrez", entrez_params=params)
+
+    def on_open_bio_help(self):
+        dialog = BioHelpDialog(self)
+        dialog.exec_()
 
     def on_open(self):
         path, _ = QFileDialog.getOpenFileName(

@@ -1,8 +1,10 @@
+import subprocess
 from typing import Optional, Dict, Any
 from PyQt5.QtCore import QThread, pyqtSignal
 from Bio import SeqIO
 
 from .io import fetch_genbank_from_entrez
+from .llm_client import generate_bio_help, DEFAULT_MODEL, OLLAMA_HOST
 
 
 class RecordLoadWorker(QThread):
@@ -41,3 +43,76 @@ class RecordLoadWorker(QThread):
             return
 
         self.completed.emit(record, info)
+
+
+class LLMQueryWorker(QThread):
+    completed = pyqtSignal(str)
+    failed = pyqtSignal(str)
+
+    def __init__(self, question: str, *, model: Optional[str] = None, host: Optional[str] = None, parent=None):
+        super().__init__(parent)
+        self.question = question
+        self.model = model or DEFAULT_MODEL
+        self.host = host or OLLAMA_HOST
+
+    def run(self):
+        try:
+            text = generate_bio_help(self.question, model=self.model, host=self.host)
+        except Exception as exc:
+            self.failed.emit(str(exc))
+            return
+        self.completed.emit(text)
+
+
+class OllamaPullWorker(QThread):
+    progress = pyqtSignal(str)
+    completed = pyqtSignal(str)
+    failed = pyqtSignal(str)
+
+    def __init__(self, model: str, parent=None):
+        super().__init__(parent)
+        self.model = model
+
+    def run(self):
+        cmd = ["ollama", "pull", self.model]
+        try:
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+        except FileNotFoundError:
+            self.failed.emit(
+                "No se encontró el comando `ollama`. Instálalo desde https://ollama.com/download."
+            )
+            return
+        except Exception as exc:
+            self.failed.emit(f"No se pudo iniciar la descarga: {exc}")
+            return
+
+        lines = []
+        try:
+            assert process.stdout is not None
+            for raw_line in process.stdout:
+                line = raw_line.strip()
+                if line:
+                    self.progress.emit(line)
+                    lines.append(line)
+                if self.isInterruptionRequested():
+                    process.terminate()
+                    self.failed.emit("Descarga interrumpida.")
+                    return
+            exit_code = process.wait()
+        except Exception as exc:
+            process.kill()
+            self.failed.emit(f"Error durante la descarga: {exc}")
+            return
+
+        if exit_code != 0:
+            last = lines[-1] if lines else "Fallo al descargar el modelo."
+            self.failed.emit(last)
+            return
+
+        summary = lines[-1] if lines else f"Modelo {self.model} descargado."
+        self.completed.emit(summary)
