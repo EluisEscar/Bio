@@ -1,11 +1,16 @@
+"""Cliente mínimo para interactuar con Ollama y obtener ayuda bioinformática."""
+
 import os
 from typing import Optional
 
 import requests
 
+# Modelo preferido para las consultas; configurable con BIO_HELP_MODEL.
 DEFAULT_MODEL = os.environ.get("BIO_HELP_MODEL", "phi3.5:3.8b")
+# Dirección del servidor Ollama local/remoto.
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 
+# Prompt del sistema que guía el tono y nivel de detalle de las respuestas.
 SYSTEM_PROMPT = (
     "Eres un tutor de bioinformática de nivel básico. Responde en español y con tono didáctico, "
     "Ofreciendo definiciones breves, ejemplos simples y pasos accionables cuando sea posible. "
@@ -14,12 +19,20 @@ SYSTEM_PROMPT = (
 
 
 def _build_url(host: str, path: str) -> str:
+    """Ensambla una URL limpia uniendo host y path sin dobles diagonales."""
     base = host.rstrip("/")
     suffix = path.lstrip("/")
     return f"{base}/{suffix}"
 
 
-def generate_bio_help(question: str,*,model: Optional[str] = None,host: Optional[str] = None,timeout: float = 300.0,) -> str:
+def generate_bio_help(
+    question: str,
+    *,
+    model: Optional[str] = None,
+    host: Optional[str] = None,
+    timeout: float = 300.0,
+) -> str:
+    """Realiza una pregunta al modelo local y devuelve una respuesta resumida."""
 
     q = (question or "").strip()
     if not q:

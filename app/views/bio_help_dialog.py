@@ -1,10 +1,5 @@
-from PyQt5.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QLabel,
-    QPlainTextEdit,
-    QPushButton,
-    QHBoxLayout,
+
+from PyQt5.QtWidgets import (QDialog,QVBoxLayout,QLabel,QPlainTextEdit,QPushButton,QHBoxLayout,
 )
 from PyQt5.QtCore import Qt
 
@@ -14,6 +9,7 @@ from ..workers import LLMQueryWorker, OllamaPullWorker
 
 class BioHelpDialog(QDialog):
     def __init__(self, parent=None, model: str = None, host: str = None):
+        """Configura la interfaz y los workers utilizados."""
         super().__init__(parent)
         self.setWindowTitle("Asistente Bioinformático")
         self.model = model or DEFAULT_MODEL
@@ -58,6 +54,7 @@ class BioHelpDialog(QDialog):
         layout.addWidget(self.answer_edit)
 
     def start_query(self):
+        """Lanza un worker para enviar la pregunta actual a Ollama."""
         if self._busy:
             return
         question = self.question_edit.toPlainText().strip()
@@ -74,6 +71,7 @@ class BioHelpDialog(QDialog):
         worker.start()
 
     def start_pull(self):
+        """Descarga el modelo seleccionado usando `ollama pull`."""
         if self._busy:
             return
         self._set_busy(True, f"Descargando modelo {self.model}…")
@@ -87,29 +85,36 @@ class BioHelpDialog(QDialog):
         worker.start()
 
     def _on_query_completed(self, text: str):
+        """Renderiza la respuesta recibida y habilita la UI nuevamente."""
         self.answer_edit.setPlainText(text)
         self._set_busy(False, "Completado.")
 
     def _on_query_failed(self, message: str):
+        """Presenta el mensaje de error cuando el worker falla."""
         self.answer_edit.setPlainText(message)
         self._set_busy(False, "Ocurrió un problema.")
 
     def _on_pull_progress(self, line: str):
+        """Agrega cada línea de progreso emitida durante la descarga."""
         current = self.answer_edit.toPlainText()
         new_text = f"{current}\n{line}".strip()
         self.answer_edit.setPlainText(new_text)
         self.answer_edit.verticalScrollBar().setValue(self.answer_edit.verticalScrollBar().maximum())
 
     def _on_pull_completed(self, message: str):
+        """Indica que la descarga terminó con éxito."""
         self._set_busy(False, message)
 
     def _clear_query_worker(self):
+        """Libera la referencia al worker de consulta."""
         self._query_worker = None
 
     def _clear_pull_worker(self):
+        """Libera la referencia al worker de descarga."""
         self._pull_worker = None
-        
+
     def _set_busy(self, busy: bool, message: str = ""):
+        """Habilita o bloquea los botones y actualiza el mensaje de estado."""
         self._busy = busy
         self.ask_button.setEnabled(not busy)
         self.pull_button.setEnabled(not busy)

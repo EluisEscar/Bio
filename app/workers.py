@@ -1,3 +1,4 @@
+"""Hilos auxiliares utilizados por la interfaz para tareas costosas."""
 import subprocess
 from typing import Optional, Dict, Any
 from PyQt5.QtCore import QThread, pyqtSignal
@@ -8,6 +9,8 @@ from .llm_client import generate_bio_help, DEFAULT_MODEL, OLLAMA_HOST
 
 
 class RecordLoadWorker(QThread):
+    """Carga registros GenBank desde disco o Entrez sin bloquear la UI."""
+
     completed = pyqtSignal(object, dict)
     failed = pyqtSignal(str, dict)
 
@@ -19,12 +22,14 @@ class RecordLoadWorker(QThread):
         entrez_params: Optional[Dict[str, Any]] = None,
         parent=None,
     ):
+        """Recibe el modo de carga y parámetros opcionales."""
         super().__init__(parent)
         self.mode = mode
         self.path = path
         self.entrez_params = entrez_params or {}
 
     def run(self):
+        """Ejecuta la lectura concreta y emite las señales correspondientes."""
         try:
             if self.mode == "file":
                 if not self.path:
@@ -46,16 +51,20 @@ class RecordLoadWorker(QThread):
 
 
 class LLMQueryWorker(QThread):
+    """Consulta un modelo de Ollama en segundo plano."""
+
     completed = pyqtSignal(str)
     failed = pyqtSignal(str)
 
     def __init__(self, question: str, *, model: Optional[str] = None, host: Optional[str] = None, parent=None):
+        """Guarda la pregunta y el modelo/host que se utilizarán."""
         super().__init__(parent)
         self.question = question
         self.model = model or DEFAULT_MODEL
         self.host = host or OLLAMA_HOST
 
     def run(self):
+        """Realiza la petición HTTP y entrega la respuesta o el error."""
         try:
             text = generate_bio_help(self.question, model=self.model, host=self.host)
         except Exception as exc:
@@ -65,15 +74,19 @@ class LLMQueryWorker(QThread):
 
 
 class OllamaPullWorker(QThread):
+    """Ejecuta `ollama pull` para descargar modelos desde la UI."""
+
     progress = pyqtSignal(str)
     completed = pyqtSignal(str)
     failed = pyqtSignal(str)
 
     def __init__(self, model: str, parent=None):
+        """Recibe el nombre del modelo a descargar."""
         super().__init__(parent)
         self.model = model
 
     def run(self):
+        """Invoca el comando de descarga y manda las líneas a la interfaz."""
         cmd = ["ollama", "pull", self.model]
         try:
             process = subprocess.Popen(

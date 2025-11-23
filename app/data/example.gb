@@ -1,10 +1,10 @@
-LOCUS       DEMO001                 3000 bp    DNA     circular SYN 01-JAN-2000
+LOCUS       DemoPlasmid             3000 bp    DNA     circular BCT 01-JAN-2000
 DEFINITION  Plásmido sintético de ejemplo.
 ACCESSION   DEMO001
-VERSION     DEMO001.1
+VERSION     DEMO001
 KEYWORDS    .
-SOURCE      synthetic DNA construct
-  ORGANISM  synthetic DNA construct
+SOURCE      .
+  ORGANISM  .
             .
 FEATURES             Location/Qualifiers
      gene            101..450

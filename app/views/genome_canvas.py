@@ -115,7 +115,6 @@ class GenomeCanvas(QWidget):
             self._apply_xlim(0, L, repaint=False)
         else:
             self.ax.set_xlim(prev_xlim)
-        self.ax.set_ylim(0, 10)
         self.ax.set_yticks([])
         self.ax.set_xlabel("Posición (bp)")
         self.ax.set_title(self.record.description or self.record.id or "")
@@ -123,12 +122,23 @@ class GenomeCanvas(QWidget):
 
         self._feature_regions = []
         default_height = 1.6
+        lane_gap = 1.8
         features = self.record.features or []
+        lane_assignments = self._assign_lanes(features)
+        y_min, y_max = 0.0, 7.5
+
         for idx, feature in enumerate(features):
             start = int(feature.location.start)
             end = int(feature.location.end)
             strand = feature.location.strand if feature.location.strand in (-1, 1) else 0
-            y_center = 6.2 if strand == 1 else 3.8 if strand == -1 else 5
+            lane = lane_assignments.get(idx, 0)
+            if strand == -1:
+                y_center = 3.8 - lane_gap * lane
+            elif strand == 1:
+                y_center = 6.2 + lane_gap * lane
+            else:
+                y_center = 5.0 + lane_gap * lane
+
             color = self._color_for_type(feature.type)
             linewidth = 1.4
             alpha = 0.25
@@ -162,9 +172,14 @@ class GenomeCanvas(QWidget):
                 color="#1F2937",
                 zorder=3,
             )
-            self._feature_regions.append((idx, start, end))
+            y_low = y_center - default_height / 2
+            y_high = y_center + default_height / 2
+            self._feature_regions.append((idx, start, end, y_low, y_high))
+            y_min = min(y_min, y_center - default_height)
+            y_max = max(y_max, y_center + default_height)
 
         self._draw_sequence_letters()
+        self.ax.set_ylim(max(0, y_min - 0.5), y_max + 0.8)
         self.canvas.draw_idle()
 
     # --- Matplotlib interactions --------------------------------------------
@@ -191,7 +206,7 @@ class GenomeCanvas(QWidget):
         if event.button != 1:
             return
         if self._press_event and not self._dragging and event.xdata is not None:
-            feature_idx = self._feature_at(event.xdata)
+            feature_idx = self._feature_at(event.xdata, event.ydata)
             if feature_idx is not None:
                 self.selected_index = feature_idx
                 bus.publish("feature_selected", index=feature_idx)
@@ -281,11 +296,42 @@ class GenomeCanvas(QWidget):
                 clip_on=True,
             )
 
-    def _feature_at(self, xdata):
-        for idx, start, end in self._feature_regions:
+    def _feature_at(self, xdata, ydata=None):
+        """
+        Devuelve el índice de la anotación bajo el cursor.
+        Considera tanto X como Y para respetar los carriles apilados.
+        """
+        for idx, start, end, y_low, y_high in self._feature_regions:
             if start <= xdata <= end:
-                return idx
+                if ydata is None or y_low <= ydata <= y_high:
+                    return idx
         return None
+
+    def _assign_lanes(self, features, padding=5):
+        """
+        Asigna cada anotación a un carril vertical para evitar solapamientos visuales.
+        Se usa un algoritmo voraz: se recorre por inicio y se coloca en el primer carril libre.
+        """
+        lanes = {1: [], -1: [], 0: []}
+        assignments = {}
+        order = sorted(range(len(features)), key=lambda i: int(features[i].location.start))
+        for idx in order:
+            feat = features[idx]
+            start = int(feat.location.start)
+            end = int(feat.location.end)
+            strand = feat.location.strand if feat.location.strand in (-1, 1) else 0
+            lane_list = lanes[strand]
+            lane_idx = None
+            for i, last_end in enumerate(lane_list):
+                if start > last_end + padding:
+                    lane_idx = i
+                    lane_list[i] = end
+                    break
+            if lane_idx is None:
+                lane_idx = len(lane_list)
+                lane_list.append(end)
+            assignments[idx] = lane_idx
+        return assignments
 
     def _color_for_type(self, feature_type):
         if feature_type not in self._type_colors:

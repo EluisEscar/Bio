@@ -1,3 +1,5 @@
+"""Ventana principal y diálogos auxiliares de la aplicación."""
+
 import os
 from PyQt5.QtWidgets import (QMainWindow,QWidget,QFileDialog,QMessageBox,QAction,QSplitter,QTableWidget,QVBoxLayout,QToolBar,QDialog,QFormLayout,
     QLineEdit,QDialogButtonBox,QLabel,QGroupBox,QHBoxLayout,QPushButton,QSpinBox,QSizePolicy,QComboBox,QToolButton,QProgressDialog,QSlider,
@@ -15,7 +17,10 @@ from ..workers import RecordLoadWorker
 
 
 class EntrezImportDialog(QDialog):
+    """Cuadro de diálogo para consultar y descargar registros desde NCBI/Entrez."""
+
     def __init__(self, parent=None, default_email="", default_db="nuccore"):
+        """Construye el formulario solicitando términos de búsqueda y parámetros Entrez."""
         super().__init__(parent)
         self.setWindowTitle("Importar desde NCBI (Entrez)")
 
@@ -55,6 +60,7 @@ class EntrezImportDialog(QDialog):
         layout.addWidget(self.buttons)
 
     def accept(self):
+        """Valida entradas requeridas antes de cerrar con éxito."""
         if not self.query_edit.text().strip():
             QMessageBox.warning(self, "Falta información", "Introduce un término de búsqueda o accession.")
             return
@@ -64,6 +70,7 @@ class EntrezImportDialog(QDialog):
         super().accept()
 
     def values(self):
+        """Devuelve las opciones elegidas por el usuario."""
         return {
             "query": self.query_edit.text().strip(),
             "db": self.db_combo.currentData(),
@@ -73,7 +80,10 @@ class EntrezImportDialog(QDialog):
 
 
 class AddFeatureDialog(QDialog):
+    """Formulario simple para crear anotaciones GenBank de prueba."""
+
     def __init__(self, parent=None):
+        """Define los campos básicos necesarios para una Feature."""
         super().__init__(parent)
         self.setWindowTitle("Añadir característica")
         self.ftype = QLineEdit("gene")
@@ -94,6 +104,7 @@ class AddFeatureDialog(QDialog):
         form.addRow(btns)
 
     def values(self):
+        """Convierte el texto ingresado en tipos nativos para crear la anotación."""
         qtext = self.qual.text().strip()
         qualifiers = {}
         if qtext:
@@ -115,7 +126,10 @@ class AddFeatureDialog(QDialog):
 
 
 class MainWindow(QMainWindow):
+    """Ventana principal que integra el visor genómico, la tabla y herramientas."""
+
     def __init__(self):
+        """Inicializa la interfaz, controladores y carga un ejemplo base."""
         super().__init__()
         self.setWindowTitle("Genome Annotation Studio")
         self.resize(1500, 900)
@@ -145,7 +159,7 @@ class MainWindow(QMainWindow):
         act_toggle_details = QAction("Mostrar detalles", self)
         act_toggle_details.setCheckable(True)
         act_toggle_details.setChecked(True)
-        act_bio_help = QAction("Ayuda bio (LLM)", self)
+        act_bio_help = QAction("Ayuda Bioinformática IA", self)
         #act_add = QAction("Añadir característica", self)
         #act_del = QAction("Eliminar característica", self)
         act_zoom_reset = QAction("Ver todo", self)
@@ -378,6 +392,7 @@ class MainWindow(QMainWindow):
     # Acciones de la interfaz
     # ---------------------------------------------------------------------
     def on_import_entrez(self):
+        """Abre el diálogo de Entrez y lanza un worker para descargar el registro."""
         dialog = EntrezImportDialog(
             self,
             default_email=self._entrez_email,
@@ -391,10 +406,12 @@ class MainWindow(QMainWindow):
         self._start_record_loader(mode="entrez", entrez_params=params)
 
     def on_open_bio_help(self):
+        """Abre la ventana modal con el tutor de bioinformática."""
         dialog = BioHelpDialog(self)
         dialog.exec_()
 
     def on_open(self):
+        """Permite seleccionar un archivo GenBank local y lo carga."""
         path, _ = QFileDialog.getOpenFileName(
             self, "Abrir GenBank", "", "GenBank (*.gb *.gbk);;Todos los archivos (*)"
         )
@@ -402,12 +419,14 @@ class MainWindow(QMainWindow):
             self._start_record_loader(mode="file", path=path)
 
     def on_save(self):
+        """Guarda el documento actual en la misma ruta asociada."""
         try:
             self.doc.save()
         except Exception as exc:
             QMessageBox.critical(self, "Error al guardar", str(exc))
 
     def on_save_as(self):
+        """Solicita una ruta y exporta el documento actual."""
         path, _ = QFileDialog.getSaveFileName(
             self, "Guardar GenBank como…", "", "GenBank (*.gb *.gbk)"
         )
@@ -418,6 +437,7 @@ class MainWindow(QMainWindow):
                 QMessageBox.critical(self, "Error al exportar", str(exc))
 
     def on_add_feature(self):
+        """Crea una anotación manual usando los datos facilitados por el usuario."""
         if not self.doc.record:
             return
         dialog = AddFeatureDialog(self)
@@ -437,17 +457,21 @@ class MainWindow(QMainWindow):
             self.controller.focus_last_feature()
 
     def on_del_feature(self):
+        """Elimina la anotación seleccionada en la tabla."""
         self.controller.delete_selected_feature()
 
     def on_reset_view(self):
+        """Ordena al lienzo que muestre la secuencia completa."""
         self.canvas.reset_view()
 
     def on_center_view(self):
+        """Centra el lienzo en una posición concreta con el ancho especificado."""
         position = self.position_spin.value()
         span = self.view_width_spin.value()
         self.canvas.center_on(position, span)
 
     def on_slider_changed(self, value):
+        """Sincroniza el desplazamiento horizontal del lienzo con el deslizador."""
         if self._syncing_slider:
             return
         if not self.canvas.record:
@@ -462,6 +486,7 @@ class MainWindow(QMainWindow):
         self._syncing_slider = False
 
     def on_toggle_sidebar(self, checked):
+        """Muestra u oculta el panel lateral y recuerda su tamaño."""
         if not hasattr(self, "left_panel") or not hasattr(self, "primary_splitter"):
             return
         if checked:
@@ -478,10 +503,12 @@ class MainWindow(QMainWindow):
             self.primary_splitter.setSizes([0, total])
 
     def _on_splitter_moved(self, pos, index):
+        """Actualiza el ancho recordado del panel lateral al ajustar el splitter."""
         if self.left_panel.isVisible():
             self._sidebar_width = self.left_panel.width()
 
     def on_toggle_details(self, checked):
+        """Controla la visibilidad del panel inferior (tabla y editor)."""
         if not hasattr(self, "right_splitter") or not hasattr(self, "detail_splitter"):
             return
         self._detail_visible = checked
@@ -499,10 +526,12 @@ class MainWindow(QMainWindow):
             self.right_splitter.setSizes([total, 0])
 
     def _on_right_splitter_moved(self, pos, index):
+        """Guarda las proporciones del splitter vertical cuando está visible."""
         if self._detail_visible:
             self._detail_sizes = self.right_splitter.sizes()
 
     def on_view_changed(self, left, right, length):
+        """Actualiza el deslizador de navegación al recibir cambios desde el lienzo."""
         self._current_span = max(1, int(right - left))
         max_pos = max(0, int(length - self._current_span))
         self._syncing_slider = True
@@ -514,10 +543,12 @@ class MainWindow(QMainWindow):
         self._syncing_slider = False
 
     def _on_detail_splitter_moved(self, pos, index):
+        """Mantiene las proporciones actuales del panel inferior."""
         if self._detail_visible:
             self._detail_sizes = self.right_splitter.sizes()
 
     def _start_record_loader(self, *, mode, path=None, entrez_params=None):
+        """Lanza un hilo que carga datos desde archivo o Entrez mostrando progreso."""
         if self._loader and self._loader.isRunning():
             QMessageBox.information(
                 self,
@@ -545,6 +576,7 @@ class MainWindow(QMainWindow):
         self._loader.start()
 
     def _cancel_loader(self):
+        """Interrumpe la carga en curso a petición del usuario."""
         if self._loader and self._loader.isRunning():
             self._loader.requestInterruption()
             if self._loading_dialog:
@@ -552,6 +584,7 @@ class MainWindow(QMainWindow):
                 self._loading_dialog.setCancelButton(None)
 
     def _on_loader_completed(self, record, info):
+        """Se ejecuta cuando la descarga o lectura termina correctamente."""
         self._close_loading_dialog()
         mode = info.get("mode")
         if mode == "file":
@@ -577,6 +610,7 @@ class MainWindow(QMainWindow):
             self._apply_loaded_record(record, None)
 
     def _on_loader_failed(self, error_message, context):
+        """Muestra ventanas de error adaptadas al origen del fallo."""
         self._close_loading_dialog()
         mode = context.get("mode")
         if mode == "file":
@@ -601,6 +635,7 @@ class MainWindow(QMainWindow):
             )
 
     def _apply_loaded_record(self, record, path):
+        """Refresca el documento y notifica al bus que hay un nuevo registro."""
         self.doc.record = record
         self.doc.filepath = path
         self.doc.dirty = False
@@ -608,23 +643,27 @@ class MainWindow(QMainWindow):
         self._update_file_actions()
 
     def _close_loading_dialog(self):
+        """Cierra el diálogo de progreso si sigue visible."""
         if self._loading_dialog:
             self._loading_dialog.hide()
             self._loading_dialog.deleteLater()
             self._loading_dialog = None
 
     def _clear_loader(self):
+        """Limpia la referencia al hilo que terminó."""
         self._loader = None
 
     # ---------------------------------------------------------------------
     # Respuestas a eventos del modelo
     # ---------------------------------------------------------------------
     def on_record_saved(self, path):
+        """Actualiza la barra de estado al completar un guardado."""
         self.statusBar().showMessage(f"Guardado: {path}", 3000)
         self.summary_labels["path"].setText(path)
         self._update_file_actions()
 
     def on_record_loaded_event(self, record):
+        """Carga valores en paneles al recibir un nuevo registro desde el bus."""
         if not record:
             return
         self.statusBar().showMessage("GenBank cargado correctamente", 3000)
@@ -648,10 +687,12 @@ class MainWindow(QMainWindow):
         self._update_file_actions()
 
     def on_features_changed_event(self, record):
+        """Refresca el contador de anotaciones cuando cambian."""
         if record:
             self.summary_labels["features"].setText(str(len(record.features)))
 
     def update_summary(self, record):
+        """Puebla el panel de resumen con los metadatos del registro."""
         if not record:
             return
         self.summary_labels["id"].setText(record.id or "—")
@@ -664,6 +705,7 @@ class MainWindow(QMainWindow):
         self._update_file_actions()
 
     def on_delete_file(self):
+        """Elimina físicamente el archivo GenBank asociado al documento."""
         path = self.doc.filepath
         if not path:
             QMessageBox.information(
@@ -707,6 +749,7 @@ class MainWindow(QMainWindow):
         self._update_file_actions()
 
     def _update_file_actions(self):
+        """Habilita o deshabilita acciones según exista un archivo físico."""
         path = self.doc.filepath
         can_delete = bool(path and os.path.exists(path))
         self.act_delete_file.setEnabled(can_delete)
