@@ -1,28 +1,6 @@
 import os
-from PyQt5.QtWidgets import (
-    QMainWindow,
-    QWidget,
-    QFileDialog,
-    QMessageBox,
-    QAction,
-    QSplitter,
-    QTableWidget,
-    QVBoxLayout,
-    QToolBar,
-    QDialog,
-    QFormLayout,
-    QLineEdit,
-    QDialogButtonBox,
-    QLabel,
-    QGroupBox,
-    QHBoxLayout,
-    QPushButton,
-    QSpinBox,
-    QSizePolicy,
-    QComboBox,
-    QToolButton,
-    QProgressDialog,
-    QSlider,
+from PyQt5.QtWidgets import (QMainWindow,QWidget,QFileDialog,QMessageBox,QAction,QSplitter,QTableWidget,QVBoxLayout,QToolBar,QDialog,QFormLayout,
+    QLineEdit,QDialogButtonBox,QLabel,QGroupBox,QHBoxLayout,QPushButton,QSpinBox,QSizePolicy,QComboBox,QToolButton,QProgressDialog,QSlider,
 )
 from PyQt5.QtCore import Qt
 

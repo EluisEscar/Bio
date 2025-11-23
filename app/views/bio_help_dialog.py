@@ -13,13 +13,9 @@ from ..workers import LLMQueryWorker, OllamaPullWorker
 
 
 class BioHelpDialog(QDialog):
-    """
-    Ventana modal que consulta un modelo de Ollama para resolver dudas rápidas de bioinformática.
-    """
-
     def __init__(self, parent=None, model: str = None, host: str = None):
         super().__init__(parent)
-        self.setWindowTitle("Asistente bioinformático (Ollama)")
+        self.setWindowTitle("Asistente Bioinformático")
         self.model = model or DEFAULT_MODEL
         self.host = host or OLLAMA_HOST
         self._busy = False
@@ -29,9 +25,7 @@ class BioHelpDialog(QDialog):
         layout = QVBoxLayout(self)
 
         info = QLabel(
-            f"Usa un modelo local vía Ollama para responder dudas básicas de bioinformática. "
-            f"Modelo por defecto: {self.model}. Servidor: {self.host}. "
-            "Ejemplos: «¿Qué es un archivo GenBank?», «Explica PCR en 3 pasos»."
+            f"Este asistente utiliza el modelo <b>{self.model}</b> para responder preguntas "
         )
         info.setWordWrap(True)
         layout.addWidget(info)
@@ -63,9 +57,6 @@ class BioHelpDialog(QDialog):
         self.answer_edit.setPlaceholderText("Las respuestas aparecerán aquí.")
         layout.addWidget(self.answer_edit)
 
-    # ------------------------------------------------------------------
-    # Acciones
-    # ------------------------------------------------------------------
     def start_query(self):
         if self._busy:
             return
@@ -95,9 +86,6 @@ class BioHelpDialog(QDialog):
         self._pull_worker = worker
         worker.start()
 
-    # ------------------------------------------------------------------
-    # Callbacks
-    # ------------------------------------------------------------------
     def _on_query_completed(self, text: str):
         self.answer_edit.setPlainText(text)
         self._set_busy(False, "Completado.")
@@ -120,10 +108,7 @@ class BioHelpDialog(QDialog):
 
     def _clear_pull_worker(self):
         self._pull_worker = None
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
+        
     def _set_busy(self, busy: bool, message: str = ""):
         self._busy = busy
         self.ask_button.setEnabled(not busy)
