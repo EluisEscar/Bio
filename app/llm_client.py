@@ -2,6 +2,7 @@
 
 import os
 from typing import Optional
+import json
 
 import requests
 
@@ -30,10 +31,9 @@ def generate_bio_help(
     *,
     model: Optional[str] = None,
     host: Optional[str] = None,
-    timeout: float = 300.0,
+    timeout: float = 120.0,
 ) -> str:
-    """Realiza una pregunta al modelo local y devuelve una respuesta resumida."""
-
+    """Realiza una pregunta al modelo local usando streaming y devuelve la respuesta completa."""
     q = (question or "").strip()
     if not q:
         raise ValueError("La pregunta no puede estar vacía.")
@@ -44,12 +44,18 @@ def generate_bio_help(
     payload = {
         "model": model_name,
         "prompt": q,
-        "stream": False,
+        "stream": True,
         "system": SYSTEM_PROMPT,
+        "options": {
+            "num_predict": 256,
+            "temperature": 0.6,
+            "top_p": 0.9,
+        },
     }
 
     try:
-        response = requests.post(url, json=payload, timeout=timeout)
+        # `stream=True` permite leer la salida del modelo por partes
+        response = requests.post(url, json=payload, timeout=timeout, stream=True)
     except requests.exceptions.RequestException as exc:
         raise RuntimeError(
             "No se pudo conectar con Ollama. ¿Está el servicio en ejecución en "
@@ -58,15 +64,30 @@ def generate_bio_help(
 
     if response.status_code != 200:
         raise RuntimeError(
-            f"Ollama devolvio un error ({response.status_code}): {response.text}"
+            f"Ollama devolvió un error ({response.status_code}): {response.text}"
         )
 
-    try:
-        data = response.json()
-    except ValueError as exc:
-        raise RuntimeError("La respuesta de Ollama no es JSON válido.") from exc
+    partes: list[str] = []
 
-    text = (data.get("response") or "").strip()
+    # Cada línea del stream es un JSON con un fragmento de la respuesta
+    for line in response.iter_lines():
+        if not line:
+            continue
+        try:
+            data = json.loads(line)
+        except ValueError:
+            # Si llega alguna línea rara, se ignora
+            continue
+
+        chunk = (data.get("response") or "")
+        if chunk:
+            partes.append(chunk)
+
+        # Cuando Ollama indica que terminó, salimos del bucle
+        if data.get("done"):
+            break
+
+    text = ("".join(partes)).strip()
     if not text:
         raise RuntimeError("Ollama respondió, pero no se recibió texto.")
     return text
