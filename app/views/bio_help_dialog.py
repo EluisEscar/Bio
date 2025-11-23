@@ -1,4 +1,3 @@
-
 from PyQt5.QtWidgets import (QDialog,QVBoxLayout,QLabel,QPlainTextEdit,QPushButton,QHBoxLayout,
 )
 from PyQt5.QtCore import Qt
@@ -65,10 +64,19 @@ class BioHelpDialog(QDialog):
         self.answer_edit.clear()
         worker = LLMQueryWorker(question, model=self.model, host=self.host, parent=self)
         worker.completed.connect(self._on_query_completed)
+        worker.progress.connect(self._on_query_progress)
         worker.failed.connect(self._on_query_failed)
         worker.finished.connect(self._clear_query_worker)
         self._query_worker = worker
         worker.start()
+
+    def _on_query_progress(self, partial_text: str):
+        """Actualiza la respuesta mientras el modelo va generando texto."""
+        self.answer_edit.setPlainText(partial_text)
+        # Desplaza el scroll al final para que se vea lo último generado
+        self.answer_edit.verticalScrollBar().setValue(
+            self.answer_edit.verticalScrollBar().maximum()
+        )
 
     def start_pull(self):
         """Descarga el modelo seleccionado usando `ollama pull`."""

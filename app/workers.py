@@ -55,6 +55,7 @@ class LLMQueryWorker(QThread):
 
     completed = pyqtSignal(str)
     failed = pyqtSignal(str)
+    progress = pyqtSignal(str)
 
     def __init__(self, question: str, *, model: Optional[str] = None, host: Optional[str] = None, parent=None):
         """Guarda la pregunta y el modelo/host que se utilizarán."""
@@ -64,12 +65,18 @@ class LLMQueryWorker(QThread):
         self.host = host or OLLAMA_HOST
 
     def run(self):
-        """Realiza la petición HTTP y entrega la respuesta o el error."""
+        """Realiza la petición HTTP en streaming y entrega la respuesta o el error."""
         try:
-            text = generate_bio_help(self.question, model=self.model, host=self.host)
+            text = generate_bio_help(
+                self.question,
+                model=self.model,
+                host=self.host,
+                on_chunk=lambda chunk: self.progress.emit(chunk),
+            )
         except Exception as exc:
             self.failed.emit(str(exc))
             return
+
         self.completed.emit(text)
 
 

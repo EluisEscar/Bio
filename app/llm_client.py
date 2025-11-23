@@ -1,7 +1,7 @@
 """Cliente mínimo para interactuar con Ollama y obtener ayuda bioinformática."""
 
 import os
-from typing import Optional
+from typing import Optional, Callable
 import json
 
 import requests
@@ -32,6 +32,7 @@ def generate_bio_help(
     model: Optional[str] = None,
     host: Optional[str] = None,
     timeout: float = 120.0,
+    on_chunk: Optional[Callable[[str], None]] = None,
 ) -> str:
     """Realiza una pregunta al modelo local usando streaming y devuelve la respuesta completa."""
     q = (question or "").strip()
@@ -45,11 +46,12 @@ def generate_bio_help(
         "model": model_name,
         "prompt": q,
         "stream": True,
+        "keep_alive": "10m",
         "system": SYSTEM_PROMPT,
         "options": {
-            "num_predict": 256,
-            "temperature": 0.6,
-            "top_p": 0.9,
+            "num_ctx": 1024,
+            "temperature": 0.5,
+            "top_p": 0.7,
         },
     }
 
@@ -67,27 +69,28 @@ def generate_bio_help(
             f"Ollama devolvió un error ({response.status_code}): {response.text}"
         )
 
-    partes: list[str] = []
+    def _stream_chunks() -> str:
+        partes: list[str] = []
+        for line in response.iter_lines():
+            if not line:
+                continue
+            try:
+                data = json.loads(line)
+            except ValueError:
+                continue
 
-    # Cada línea del stream es un JSON con un fragmento de la respuesta
-    for line in response.iter_lines():
-        if not line:
-            continue
-        try:
-            data = json.loads(line)
-        except ValueError:
-            # Si llega alguna línea rara, se ignora
-            continue
+            chunk = (data.get("response") or "")
+            if chunk:
+                partes.append(chunk)
+                if on_chunk:
+                    on_chunk("".join(partes))
 
-        chunk = (data.get("response") or "")
-        if chunk:
-            partes.append(chunk)
+            if data.get("done"):
+                break
 
-        # Cuando Ollama indica que terminó, salimos del bucle
-        if data.get("done"):
-            break
+        return ("".join(partes)).strip()
 
-    text = ("".join(partes)).strip()
+    text = _stream_chunks()
     if not text:
         raise RuntimeError("Ollama respondió, pero no se recibió texto.")
     return text
