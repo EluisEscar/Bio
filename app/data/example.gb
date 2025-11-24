@@ -3,14 +3,14 @@ DEFINITION  Plásmido sintético de ejemplo.
 ACCESSION   DEMO001
 VERSION     DEMO001
 KEYWORDS    .
-SOURCE      .
+SOURCE      
   ORGANISM  .
             .
 FEATURES             Location/Qualifiers
      gene            101..450
                      /gene="repA"
                      /note="origen de replicación"
-     CDS             complement(801..1500)
+     CDS             801..1500
                      /product="protein X"
                      /note="enzima hipotética"
      promoter        2001..2300

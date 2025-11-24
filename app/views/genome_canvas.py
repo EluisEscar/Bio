@@ -198,8 +198,11 @@ class GenomeCanvas(QWidget):
         self._redraw()
 
     def _on_press(self, event):
-        if event.button == 1:
+        if event.button == 1 and event.xdata is not None:
             self._press_event = event
+            self._dragging = False
+        else:
+            self._press_event = None
             self._dragging = False
 
     def _on_release(self, event):
@@ -215,7 +218,11 @@ class GenomeCanvas(QWidget):
         self._dragging = False
 
     def _on_motion(self, event):
-        if self._press_event is None or event.xdata is None:
+        if (
+            self._press_event is None
+            or self._press_event.xdata is None
+            or event.xdata is None
+        ):
             return
         if abs(event.x - self._press_event.x) > 3:
             self._dragging = True

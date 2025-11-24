@@ -1,9 +1,15 @@
+import re
 from Bio import SeqIO, Entrez
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 from typing import Optional, Tuple, Dict, Any
 from .event_bus import bus
+
+def is_valid_email(value: str) -> bool:
+    """Comprueba de forma simple si el correo parece válido (usuario@dominio.tld)."""
+    value = (value or "").strip()
+    return bool(value and re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", value))       #comprueba mediante regex
 
 def load_genbank(path: str):
     rec = SeqIO.read(path, "genbank")
@@ -45,10 +51,10 @@ def fetch_genbank_from_entrez(
     term = (query or "").strip()
     if not term:
         raise ValueError("La consulta para NCBI no puede estar vacía.")
-    if not email:
-        raise ValueError("Debes proporcionar un correo electrónico válido para NCBI.")
+    if not is_valid_email(email):
+        raise ValueError("Debes proporcionar un correo electrónico con formato válido para NCBI.")
 
-    Entrez.email = email
+    Entrez.email = email.strip()
     Entrez.api_key = api_key or None
 
     try:

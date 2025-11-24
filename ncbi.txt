@@ -4,4 +4,4 @@ NC_012920.1   #genoma genoma mitocondrial humano
 NC_021490.2   #plasmido pUC19
 NM_001101.5   #ARNm humano de ACTB
 NC_045512.2   #genoma completo de SARS-Cov-2
-EU622806.1    #genoma de virus del mosaico
+EU622806.1    #genoma de virus del mosaico del tabaco

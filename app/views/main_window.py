@@ -8,7 +8,7 @@ from PyQt5.QtCore import Qt
 
 from ..models import GenomeDocument
 from ..event_bus import bus
-from ..io import make_demo_record
+from ..io import make_demo_record, is_valid_email
 from ..controllers.feature_controller import FeatureController
 from .genome_canvas import GenomeCanvas
 from .feature_editor import FeatureEditorPanel
@@ -61,11 +61,16 @@ class EntrezImportDialog(QDialog):
 
     def accept(self):
         """Valida entradas requeridas antes de cerrar con éxito."""
-        if not self.query_edit.text().strip():
+        query = self.query_edit.text().strip()
+        email = self.email_edit.text().strip()
+        if not query:
             QMessageBox.warning(self, "Falta información", "Introduce un término de búsqueda o accession.")
             return
-        if not self.email_edit.text().strip():
+        if not email:
             QMessageBox.warning(self, "Correo requerido", "Debes proporcionar un correo electrónico para NCBI.")
+            return
+        if not is_valid_email(email):
+            QMessageBox.warning(self, "Formato de correo inválido", "Introduce un correo electrónico válido (ej. usuario@dominio).")
             return
         super().accept()
 
